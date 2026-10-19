@@ -1,0 +1,266 @@
+
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendamentos | GymFit</title>
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        body {
+            background: #f2f4f7;
+            color: #222;
+        }
+
+        .pagina-agendamentos {
+            width: 90%;
+            max-width: 1000px;
+            margin: 30px auto;
+        }
+
+        .topo-agendamentos {
+            background: #111827;
+            color: white;
+            text-align: center;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+
+        .topo-agendamentos h1 {
+            color: #ff7025;
+            margin-bottom: 10px;
+        }
+
+        .cartao-agendamentos {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0,0,0,.08);
+            margin-bottom: 25px;
+        }
+
+        .cartao-agendamentos form {
+            display: grid;
+            gap: 12px;
+        }
+
+        .cartao-agendamentos label {
+            font-weight: bold;
+        }
+
+        .cartao-agendamentos input,
+        .cartao-agendamentos select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .cartao-agendamentos button {
+            background: #f58220;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .cartao-agendamentos button:hover {
+            background: #df6c12;
+        }
+
+        .agendamento {
+            padding: 15px;
+            margin-top: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow-wrap: anywhere;
+        }
+
+        .voltar {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #b94d08;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        #mensagem {
+            overflow-wrap: anywhere;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="pagina-agendamentos">
+        <header class="topo-agendamentos">
+            <h1>GYMFIT</h1>
+            <p>Gestão de agendamentos</p>
+        </header>
+
+        <a class="voltar" href="index.html">← Voltar à página principal</a>
+
+        <section class="cartao-agendamentos">
+            <h2>Novo agendamento</h2>
+
+            <form id="formAgendamento">
+                <label for="nome">Nome do cliente</label>
+                <input type="text" id="nome" required
+                       placeholder="Nome do cliente">
+
+                <label for="atividade">Atividade</label>
+                <select id="atividade" required>
+                    <option value="">Seleciona uma atividade</option>
+                    <option value="Musculação">Musculação</option>
+                    <option value="Treino personalizado">Treino personalizado</option>
+                    <option value="Aula de grupo">Aula de grupo</option>
+                    <option value="Cardio">Cardio</option>
+                </select>
+
+                <label for="data">Data</label>
+                <input type="date" id="data" required>
+
+                <label for="hora">Hora</label>
+                <input type="time" id="hora" required>
+
+                <button type="submit">Criar agendamento</button>
+                <p id="mensagem" role="status"></p>
+            </form>
+        </section>
+
+        <section class="cartao-agendamentos">
+            <h2>Agendamentos registados</h2>
+            <div id="listaAgendamentos">
+                <p>A carregar agendamentos...</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const formulario = document.getElementById("formAgendamento");
+        const lista = document.getElementById("listaAgendamentos");
+        const mensagem = document.getElementById("mensagem");
+
+        const api = "api/agendamentos";
+
+        function mostrarMensagem(texto, erro = false) {
+            mensagem.textContent = texto;
+            mensagem.style.color = erro ? "red" : "green";
+        }
+
+        async function carregarAgendamentos() {
+            lista.textContent = "A carregar agendamentos...";
+
+            try {
+                const resposta = await fetch(api);
+
+                if (!resposta.ok) {
+                    throw new Error("Erro HTTP " + resposta.status);
+                }
+
+                const agendamentos = await resposta.json();
+                lista.replaceChildren();
+
+                if (agendamentos.length === 0) {
+                    lista.textContent = "Ainda não existem agendamentos.";
+                    return;
+                }
+
+                agendamentos.forEach(function(agendamento) {
+                    const cartao = document.createElement("div");
+                    cartao.className = "agendamento";
+
+                    const titulo = document.createElement("h3");
+                    titulo.textContent = agendamento.nome;
+
+                    const detalhes = document.createElement("p");
+                    detalhes.textContent =
+                        agendamento.atividade + " | " +
+                        agendamento.data + " às " + agendamento.hora;
+
+                    const botao = document.createElement("button");
+                    botao.type = "button";
+                    botao.textContent = "Eliminar";
+
+                    botao.addEventListener("click", async function() {
+                        if (!confirm("Queres eliminar este agendamento?")) {
+                            return;
+                        }
+
+                        try {
+                            const resultado = await fetch(
+                                api + "/" + agendamento.id,
+                                { method: "DELETE" }
+                            );
+
+                            if (!resultado.ok) {
+                                throw new Error("Erro HTTP " + resultado.status);
+                            }
+
+                            mostrarMensagem("Agendamento eliminado.");
+                            await carregarAgendamentos();
+
+                        } catch (erro) {
+                            mostrarMensagem(
+                                "Não foi possível eliminar o agendamento.",
+                                true
+                            );
+                        }
+                    });
+
+                    cartao.append(titulo, detalhes, botao);
+                    lista.appendChild(cartao);
+                });
+
+            } catch (erro) {
+                lista.textContent =
+                    "Não foi possível carregar os agendamentos. " +
+                    "Verifica se a aplicação e a base de dados estão a funcionar.";
+                console.error(erro);
+            }
+        }
+
+        formulario.addEventListener("submit", async function(evento) {
+            evento.preventDefault();
+
+            const novoAgendamento = {
+                nome: document.getElementById("nome").value.trim(),
+                atividade: document.getElementById("atividade").value,
+                data: document.getElementById("data").value,
+                hora: document.getElementById("hora").value
+            };
+
+            try {
+                const resposta = await fetch(api, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(novoAgendamento)
+                });
+
+                if (!resposta.ok) {
+                    throw new Error("Erro HTTP " + resposta.status);
+                }
+
+                formulario.reset();
+                mostrarMensagem("Agendamento guardado na base de dados!");
+                await carregarAgendamentos();
+
+            } catch (erro) {
+                console.error(erro);
+                mostrarMensagem(
+                    "Não foi possível guardar. Verifica a ligação à base de dados.",
+                    true
+                );
+            }
+        });
+
+        carregarAgendamentos();
+    </script>
+</body>
+</html>
